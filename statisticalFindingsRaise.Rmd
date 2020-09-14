@@ -1,0 +1,343 @@
+---
+title: "statisticalFindingsRaise.html"
+output: html_document
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, fig.height=3, fig.width=5, 
+                      fig.align = "center")
+library(tidyverse)
+library(mosaic)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(broom)
+```
+
+### Overview:
+
+Based on the statistical tests I performed, primarily linear regression and ANOVA tests, both described below, a few variables were statistically significant in their relationship to percent change in housing price, meaning they have a p-value less than .05.  The closer to 0 the p-value is, the less likely the results are due to random chance. With a p-value of .05, only 5% of the time will results as or more extreme as ours occur randomly. Using the ANOVA test, the variables with the smallest p-value, also known as the least likely to occur randomly, were state, median household income, and the intensity of COVID-19 restrictions. Whether a house was in a rural, urban, or suburban area was also significant in all cases. Housing price was significant only from January to Februrary and from January to March, which was probably unrelated to COVID-19. The results such as median household income, state, or rural/urban continuum can not be attributed to COVID-19 without further research. What was contrary to what I expected was the relationship between housing price and the percent change in housing price. Higher priced homes actually increased in price less than the lower priced houses. After rethinking my hypothesis, a possible explaination for the results I saw is that people who live in lower income housing in the cities want to get out of their apartments and move into houses due to the virus, leading to a high demand for lower income houses and therefore raising the price. Race did not have a significant effect on percent change in housing price. With the linear regression test I was testing numerical variables as opposed to the categorical variables above. There is strong statistical evidence between percent poverty and percent change in housing price. For my linear model, I combined May housing price, median age, percent poverty, numerical ratings for COVID-19 restrictions, state (specifically if the state is Illinois or not), and if a zip code is urban. This provided the model with every variable being at least somewhat significant in relation to both percent change in housing price and the other variables. The full model and all the statistical tests are below with R code. 
+
+### ANOVA Test:
+
+To figure out which variables seem to have a relationship with changes in housing price, I used two different types of statistical tests. One, a linear regression model, is built to determine how much of the change in the y variable, in this case percent change in housing price, is related to the x variable. The other is an ANOVA test. The purpose of an ANOVA test is to determine if there is a difference between multiple groups. To figure out if results are significant, a p-value is calculated. For an ANOVA test, a null hypothesis and alternative hypothesis is needed. In this case, the null hypothesis is that there is no difference between groups in regard to the change in housing price; in other words, a categorical variable has no relationship with percent change in housing price. The alternative hypothesis is that the variable does have a relationship with housing price changes. For each relevant categorical variable in my dataset, I ran 4 ANOVA tests, testing percent change in housing price from January to February, January to March, January to April, and January to May. Below is a sample of all four tests using the price of houses as the categorical variable which is preceded by the loading of the data. 
+
+```{r}
+library(readr)
+thatRaiseData2 <- read_csv("dfpt2.csv")
+
+
+#categorize data by party
+thatRaiseData2 <- thatRaiseData2 %>%
+    mutate(party = case_when(
+        `PVI#` < -4 ~ "Rep",
+        `PVI#` > 4 ~ "Dem",
+        TRUE ~ "purple"  )  )
+
+#categorize data by rural/urban/suburban
+thatRaiseData2 <- thatRaiseData2 %>%
+    mutate(rurality = case_when(
+        RUCA2 < 3.05 ~ "Urban",
+        RUCA2 < 4.05 ~ "Suburban",
+        RUCA2 < 4.15 ~ "Urban",
+        RUCA2 < 5.05 ~ "Suburban",
+        RUCA2 < 5.15 ~ "Urban",
+        RUCA2 < 6.9 ~ "Suburban",
+        RUCA2 < 7.05 ~ "Rural",
+        RUCA2 < 7.15 ~ "Urban",
+        RUCA2 < 7.25 ~ "Suburban",
+        RUCA2 < 8.05 ~ "Rural",
+        RUCA2 < 8.15 ~ "Urban",
+        RUCA2 < 8.25 ~ "Suburban",
+        RUCA2 < 10.05 ~ "Rural",
+        RUCA2 < 10.15 ~ "Urban",
+        RUCA2 < 10.25 ~ "Suburban",
+        TRUE ~ "Rural"  )  )
+```
+
+```{r}
+#Set percent change in housing price variables - NOTE: housing data comes out a month later, so the date actually represents data from the previous month 
+perChangeMay <- ((thatRaiseData2$`2020-06-30`) - (thatRaiseData2$`2020-02-29`))/ (thatRaiseData2$`2020-02-29`) #Jan-May
+
+perChangeApril <- ((thatRaiseData2$`2020-05-31`) - (thatRaiseData2$`2020-02-29`))/ (thatRaiseData2$`2020-02-29`) #Jan-April
+
+perChangeMarch <- ((thatRaiseData2$`2020-04-30`) - (thatRaiseData2$`2020-02-29`))/ (thatRaiseData2$`2020-02-29`) #Jan-March
+
+perChangeFeb <- ((thatRaiseData2$`2020-03-31`) - (thatRaiseData2$`2020-02-29`))/ (thatRaiseData2$`2020-02-29`) #Jan-Feb
+```
+
+January to Feburary:
+```{r}
+   summary(aov(perChangeFeb ~ HousingCategorical, data = thatRaiseData2))
+```
+
+January to March:
+```{r}
+   summary(aov(perChangeMarch ~ HousingCategorical, data = thatRaiseData2))
+```
+
+January to April:
+```{r}
+   summary(aov(perChangeApril ~ HousingCategorical, data = thatRaiseData2))
+```
+
+January to May:
+```{r}
+   summary(aov(perChangeMay ~ HousingCategorical, data = thatRaiseData2))
+```
+                        
+The p-value is shown under PR(>F), and is generally considered significant if its value is under .05. This means that if there is no relationship between a house’s price and the percent change in housing price, five percent of the time we will reject the null hypothesis and conclude there is actually a relationship. In the results above, we see that between January and May, with a p-value of 0.221, we do not see evidence of a relationship between the price of a house and ther change in price. In January to April, we get a p-value of .074, which is still not significant. But, from January to March there is a p-value of .0423, and from January to February there is a p-value of .0217. While both of those are significant, it seems unlikely that COVID-19 was related to that, as the effects of the virus were not large in February, and certainly not as great as during March or April.
+
+### Linear Regression: 
+
+The linear regression models use a straight line to help determine the relationship between numerical variables. A negative slope indicates that there is a negative correlation between the variables, and a larger magnitude of the slope indicates that for every one unit increase in x, there is a larger increase in y. The magnitude of the slope has no relationship to the correlation between the x and y variables, meaning a slope of 100 is not necessarily more statistically significant than a slope of .01. When using RStudio to create a linear regression, I create two plots; one shows the data points with the regression line, and the other shows the residuals. Residuals are the difference between a predicted value for a point, based on the regression line, and the actual value the data found. In an ideal linear regression situation, the residuals will appear random. After running a linear regression, I get a correlation constant which tells how much of the variability seems to be explainable by the relationship between the two variables. There also is a p-value that is used to determine if the results are significant. That is the p-value for the slope, the second value under PR(>|t|). As with the ANOVA test, a significant p-value does not indicate that the x axis causes a change in the y variable, nor does it guarantee a relationship, as the results could be due to chance. 
+
+Linear Regression Graph for Percent Poverty vs Percent Change in Housing Price:
+```{r}
+  ggplot(thatRaiseData2, aes(x = as.numeric(PercentPoverty), y = perChangeMay)) + 
+        geom_point() + #alpha changes opaci
+        geom_smooth(method = "lm")
+```
+
+Residuals Plot:
+```{r}
+  ggplot(lm(as.numeric(PercentPoverty)~perChangeMay, data=thatRaiseData2)) + 
+        geom_point(aes(x=.fitted, y=.resid))
+```
+
+Linear Regression Summary
+```{r}
+      summary(lm(perChangeMay ~ as.numeric(PercentPoverty), data = thatRaiseData2))
+      
+      
+      cor(perChangeMay, as.numeric(thatRaiseData2$PercentPoverty), use="complete.obs")
+```
+
+Since the p-value is 0.00075, which is much smaller than .05, there appears to be strong evidence for a significant relationship between percent poverty and the change in housing price. Since the correlation is only 0.2424607, though, only about 24% of the variability in percent change in housing price appears to be explained by percent poverty. 
+
+### My Model:
+
+In an attempt to create a linear model using more than one variable, I made a linear regression using all relevant values. The goal was to predict the y variable, percent change in housing price from January to May, using different x variables. The p-values given for each slope tells how significant a variable is given all the other variables. After the original model is displayed, I can get rid of any variables that seem to have little to no impact on the model. With several repetitions of creating a model and deleting variables that are the least impactful, I ended with a model in which 7 variables, some numerical and some categorical, are significant and helpful in predicting the percent change in housing price. Two of those models are shown in progression.
+
+Model 1:
+```{r}
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(PercentHispanic) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + as.numeric(NumericalRestriction) + party + State + rurality, data = thatRaiseData2))
+```
+Model 2:
+```{r}
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + as.numeric(NumericalRestriction) + party + (State == "IL") + (rurality == "Urban"), data = thatRaiseData2))
+```
+
+### My Code
+
+
+Race:
+
+```{r}
+summary(aov(perChangeMay ~ Race, data = thatRaiseData2))
+summary(aov(perChangeApril ~ Race, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ Race, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ Race, data = thatRaiseData2))
+```
+
+
+Party: 
+
+```{r}
+summary(aov(perChangeMay ~ party, data = thatRaiseData2))
+summary(aov(perChangeApril ~ party, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ party, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ party, data = thatRaiseData2))
+```
+
+Housing Categorical:
+
+```{r}
+summary(aov(perChangeMay ~ HousingCategorical, data = thatRaiseData2))
+summary(aov(perChangeApril ~ HousingCategorical, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ HousingCategorical, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ HousingCategorical, data = thatRaiseData2))
+```
+
+State:
+
+```{r}
+summary(aov(perChangeMay ~ State, data = thatRaiseData2))
+summary(aov(perChangeApril ~ State, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ State, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ State, data = thatRaiseData2))
+```
+
+Rurality:
+
+```{r}
+summary(aov(perChangeMay ~ rurality, data = thatRaiseData2))
+summary(aov(perChangeApril ~ rurality, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ rurality, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ rurality, data = thatRaiseData2))
+```
+
+Median Household Income:
+
+```{r}
+summary(aov(perChangeMay ~ MedHouseIncomeCategorical, data = thatRaiseData2))
+summary(aov(perChangeApril ~ MedHouseIncomeCategorical, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ MedHouseIncomeCategorical, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ MedHouseIncomeCategorical, data = thatRaiseData2))
+```
+ 
+Covid Restrictions:
+
+```{r}
+summary(aov(perChangeMay ~ CovidRestrictionsCategorical, data = thatRaiseData2))
+summary(aov(perChangeApril ~ CovidRestrictionsCategorical, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ CovidRestrictionsCategorical, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ CovidRestrictionsCategorical, data = thatRaiseData2))
+```
+
+Covid Impact:
+
+```{r}
+summary(aov(perChangeMay ~ CovidImpactCategorical, data = thatRaiseData2))
+summary(aov(perChangeApril ~ CovidImpactCategorical, data = thatRaiseData2))
+summary(aov(perChangeMarch ~ CovidImpactCategorical, data = thatRaiseData2))
+summary(aov(perChangeFeb ~ CovidImpactCategorical, data = thatRaiseData2))
+```
+
+
+
+
+
+
+
+
+Other Stuff:
+Yes:
+Believe it:
+
+Percent Poverty:
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(PercentPoverty), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(PercentPoverty)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+
+lm(perChangeMay ~ as.numeric(PercentPoverty), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(PercentPoverty), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$PercentPoverty), use="complete.obs")
+```
+
+Median Age
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(MedianAge), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(MedianAge)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+
+lm(perChangeMay ~ as.numeric(MedianAge), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(MedianAge), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$MedianAge), use="complete.obs")
+```
+
+Covid Per 10,000
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(Covid.per.10.000), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(Covid.per.10.000)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+
+lm(perChangeMay ~ as.numeric(Covid.per.10.000), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(Covid.per.10.000), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$Covid.per.10.000), use="complete.obs")
+```
+
+PVI:
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(`PVI#`), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(`PVI#`)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+
+lm(perChangeMay ~ as.numeric(`PVI#`), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(`PVI#`), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$`PVI#`), use="complete.obs")
+```
+
+Population Density:
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(PopDensity), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(PopDensity)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+lm(perChangeMay ~ as.numeric(PopDensity), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(PopDensity), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$PopDensity), use="complete.obs")
+```
+
+May Housing Price:
+```{r}
+ggplot(thatRaiseData2, aes(x = as.numeric(`2020-06-30`), y = perChangeMay)) + 
+  geom_point() + #alpha changes opaci
+  geom_smooth(method = "lm")
+
+
+ggplot(lm(as.numeric(`2020-06-30`)~perChangeMay, data=thatRaiseData2)) + 
+  geom_point(aes(x=.fitted, y=.resid))
+
+
+lm(perChangeMay ~ as.numeric(`2020-06-30`), data = thatRaiseData2)
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`), data = thatRaiseData2))
+
+
+cor(perChangeMay, as.numeric(thatRaiseData2$`2020-06-30`), use="complete.obs")
+```
+
+
+
+```{r}
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(PopDensity) + as.numeric(`PVI#`) + as.numeric(Covid.per.10.000) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + CovidRestrictionsCategorical + Race + party + State + MedHouseIncomeCategorical + rurality, data = thatRaiseData2))
+```
+
+```{r}
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(PercentHispanic) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + as.numeric(NumericalRestriction) + party + State + rurality, data = thatRaiseData2))
+```
+
+
+```{r}
+summary(lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + as.numeric(NumericalRestriction) + party + (State == "IL") + (rurality == "Urban"), data = thatRaiseData2))
+
+lm(perChangeMay ~ as.numeric(`2020-06-30`) + as.numeric(MedianAge) + as.numeric(PercentPoverty) + as.numeric(NumericalRestriction) + party + (State == "IL") + (rurality == "Urban"), data = thatRaiseData2) %>% 
+  augment() #%>% 
+  #ggplot(aes(x = .fitted, y = .resid, color = party)) + 
+ # geom_point() +
+ # geom_hline(yintercept = 0)
+```
